@@ -137,7 +137,7 @@ def project(
 
     w_opt = w_avg.clone().detach().requires_grad_(True)
     w_out = torch.zeros([num_steps] + list(w_opt.shape[1:]), dtype=torch.float32, device=device)
-    optimizer = torch.optim.Adam([w_opt] + list(noise_buffs.values()), betas=(0.9, 0.999), lr=initial_learning_rate)
+    optimizer = torch.optim.Adamax([w_opt] + list(noise_buffs.values()), betas=(0.9, 0.999), lr=initial_learning_rate)
 
     # Init noise.
     for buf in noise_buffs.values():
