@@ -1,4 +1,4 @@
-name: stylegan3
+name: stylegan3_with_ffcv
 channels:
   - pytorch
   - nvidia
@@ -19,9 +19,16 @@ dependencies:
   - imageio=2.9.0
   - psutil=5.8.0
   - torchvision=0.2.2
+  - cupy
+  - pkg-config
+  - compilers
+  - libjpeg-turbo
+  - opencv
+  - numba
   - pip:
     - imgui==1.3.0
     - glfw==2.2.0
     - pyopengl==3.1.5
     - imageio-ffmpeg==0.4.3
     - pyspng
+    - ffcv

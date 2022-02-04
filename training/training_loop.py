@@ -17,6 +17,9 @@ import psutil
 import PIL.Image
 import numpy as np
 import torch
+from ffcv.loader import Loader, OrderOption
+from ffcv.loader import OrderOption
+
 import dnnlib
 from torch_utils import misc
 from torch_utils import training_stats
@@ -122,6 +125,7 @@ def training_loop(
     cudnn_benchmark         = True,     # Enable torch.backends.cudnn.benchmark?
     abort_fn                = None,     # Callback function for determining whether to abort training. Must return consistent results across ranks.
     progress_fn             = None,     # Callback function for updating training progress. Called for all ranks.
+    use_ffcv                = False,    # Use FFCV Loader instaed of pytorch DataLoader. beton file must be provided along with normal dataset
 ):
     # Initialize.
     start_time = time.time()
@@ -139,7 +143,20 @@ def training_loop(
         print('Loading training set...')
     training_set = dnnlib.util.construct_class_by_name(**training_set_kwargs) # subclass of training.dataset.Dataset
     training_set_sampler = misc.InfiniteSampler(dataset=training_set, rank=rank, num_replicas=num_gpus, seed=random_seed)
-    training_set_iterator = iter(torch.utils.data.DataLoader(dataset=training_set, sampler=training_set_sampler, batch_size=batch_size//num_gpus, **data_loader_kwargs))
+
+    if use_ffcv:
+        # beton file must be in same folder
+        write_path = training_set_kwargs.path.replace('zip', 'beton')
+
+        multiple_gpus: bool = num_gpus > 1
+        dataloader = Loader(write_path, batch_size == batch_size // num_gpus, num_workers=num_gpus,
+                            order=OrderOption.RANDOM, os_cache=True, distributed=multiple_gpus)
+        training_set_iterator = iter(dataloader)
+    else:
+        training_set_iterator = iter(torch.utils.data.DataLoader(dataset=training_set, sampler=training_set_sampler,
+                                                                 batch_size=batch_size // num_gpus,
+                                                                 **data_loader_kwargs))
+
     if rank == 0:
         print()
         print('Num images: ', len(training_set))
@@ -158,7 +175,7 @@ def training_loop(
     # Resume from existing pickle.
     if (resume_pkl is not None) and (rank == 0):
         print(f'Resuming from "{resume_pkl}"')
-        with dnnlib.util.open_url(resume_pkl) as f:
+        with dnnlib.util.open_url(resume_pkl, cache_dir='cache') as f:
             resume_data = legacy.load_network_pkl(f)
         for name, module in [('G', G), ('D', D), ('G_ema', G_ema)]:
             misc.copy_params_and_buffers(resume_data[name], module, require_all=False)

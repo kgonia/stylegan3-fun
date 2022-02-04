@@ -95,7 +95,7 @@ def launch_training(c, desc, outdir, dry_run):
 
     # Launch processes.
     print('Launching processes...')
-    torch.multiprocessing.set_start_method('spawn')
+    torch.multiprocessing.set_start_method('spawn', force=True)
     with tempfile.TemporaryDirectory() as temp_dir:
         if c.num_gpus == 1:
             subprocess_fn(rank=0, c=c, temp_dir=temp_dir)
@@ -146,6 +146,7 @@ def parse_comma_separated_list(s):
 @click.option('--augpipe',      help='Augmentation pipeline [default: bgc]',                    type=click.Choice(['blit', 'geom', 'color', 'filter', 'noise', 'cutout', 'bg', 'bgc', 'bgcf', 'bgcfn', 'bgcfnc']))
 @click.option('--resume',       help='Resume from given network pickle', metavar='[PATH|URL]',  type=str)
 @click.option('--freezed',      help='Freeze first layers of D', metavar='INT',                 type=click.IntRange(min=0), default=0, show_default=True)
+@click.option('--use-ffcv',     help='Use FFCV Loader', metavar='BOOL',                         type=bool, default=False, show_default=True)
 # Misc hyperparameters.
 @click.option('--gamma',        help='R1 regularization weight', metavar='FLOAT',               type=click.FloatRange(min=0), default=None)
 @click.option('--p',            help='Probability for --aug=fixed', metavar='FLOAT',            type=click.FloatRange(min=0, max=1), default=0.2, show_default=True)
@@ -212,6 +213,7 @@ def main(**kwargs):
     c.training_set_kwargs.use_labels = opts.cond
     c.training_set_kwargs.xflip = opts.mirror
     c.training_set_kwargs.yflip = opts.mirror_y
+    c.use_ffcv = opts.use_ffcv
 
     # Hyperparameters & settings.
     c.num_gpus = opts.gpus
